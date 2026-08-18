@@ -652,8 +652,8 @@ export default function Quotations() {
         .error-msg{font-size:11px;color:#ef4444}
         .section-title{font-size:11px;font-weight:800;color:#b30000;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid #fef2f2;display:flex;justify-content:space-between;align-items:center;gap:10px}
         .lines-table{width:100%;border-collapse:collapse;margin-bottom:8px;table-layout:fixed}
-        .lines-table th{background:#f9fafb;padding:8px 10px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;border-bottom:1px solid #e5e7eb;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .lines-table td{padding:6px 6px;border-bottom:1px solid #f3f4f6;vertical-align:middle;overflow:hidden}
+        .lines-table th{background:#f9fafb;padding:8px 10px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;border-bottom:1px solid #e5e7eb;text-align:left}
+        .lines-table td{padding:6px 6px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
         .lines-table tr:last-child td{border-bottom:none}
         .line-input{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;font-family:Segoe UI;background:#f9fafb;box-sizing:border-box}
         .line-input:focus{border-color:#b30000;box-shadow:0 0 0 2px rgba(179,0,0,0.12);background:white}
@@ -663,8 +663,9 @@ export default function Quotations() {
         .btn-remove-line:disabled{opacity:0.3;cursor:not-allowed}
         .btn-add-line{padding:7px 14px;background:#f0fdf4;border:1px dashed #86efac;border-radius:8px;color:#15803d;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-top:4px}
         .btn-add-line:hover{background:#dcfce7}
-        .warranty-ok{display:inline-block;max-width:100%;font-size:11px;background:#f0fdf4;color:#15803d;padding:3px 8px;border-radius:6px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;box-sizing:border-box}
-        .warranty-missing{display:inline-block;max-width:100%;font-size:11px;background:#fef2f2;color:#b91c1c;padding:3px 8px;border-radius:6px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;box-sizing:border-box}
+        .warranty-cell{width:100px;max-width:100px;overflow:hidden}
+        .warranty-ok{display:block;width:100%;max-width:92px;font-size:11px;background:#f0fdf4;color:#15803d;padding:3px 8px;border-radius:6px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box}
+        .warranty-missing{display:block;width:100%;max-width:92px;font-size:11px;background:#fef2f2;color:#b91c1c;padding:3px 8px;border-radius:6px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box}
         .warranty-empty{font-size:12px;color:#d1d5db}
         .warranty-error-box{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:#b91c1c;font-weight:600}
         .dp-section{background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-top:14px}
@@ -698,9 +699,9 @@ export default function Quotations() {
         .detail-row:last-child{border-bottom:none}
         .detail-label{color:#6b7280;font-weight:600}
         .detail-val{color:#111827;font-weight:500;text-align:right}
-        .items-detail-table{width:100%;border-collapse:collapse;margin-top:6px}
+        .items-detail-table{width:100%;border-collapse:collapse;margin-top:6px;table-layout:fixed}
         .items-detail-table th{background:#f9fafb;padding:8px 12px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;border-bottom:1px solid #e5e7eb;text-align:left}
-        .items-detail-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid #f3f4f6;color:#111827}
+        .items-detail-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid #f3f4f6;color:#111827;overflow:hidden}
         .items-detail-table tr:last-child td{border-bottom:none}
         .detail-totals{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-top:12px}
         .detail-total-row{display:flex;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #f3f4f6;font-size:13px}
@@ -939,11 +940,11 @@ export default function Quotations() {
               <thead>
                 <tr>
                   <th style={{ width: "28%" }}>Product</th>
-                  <th style={{ width: "15%" }}>Serial No.</th>
-                  <th style={{ width: "8%" }}>Qty</th>
+                  <th style={{ width: "14%" }}>Serial No.</th>
+                  <th style={{ width: "9%" }}>Qty</th>
                   <th style={{ width: "14%" }}>Unit Price (₱)</th>
-                  <th style={{ width: "15%" }}>Warranty *</th>
-                  <th style={{ width: "13%" }}>Subtotal</th>
+                  <th style={{ width: "100px" }}>Warranty *</th>
+                  <th style={{ width: "12%" }}>Subtotal</th>
                   <th style={{ width: "7%" }}></th>
                 </tr>
               </thead>
@@ -967,11 +968,11 @@ export default function Quotations() {
                       <input type="number" min="0" className="line-input" placeholder="0"
                         value={line.price} onChange={e => updateLine(idx, "price", e.target.value)} />
                     </td>
-                    <td>
+                    <td className="warranty-cell">
                       {line.item_id ? (
                         line.warranty
                           ? <span className="warranty-ok" title={line.warranty}>🛡 {line.warranty}</span>
-                          : <span className="warranty-missing">⚠ No warranty</span>
+                          : <span className="warranty-missing" title="No warranty">⚠ No warranty</span>
                       ) : (
                         <span className="warranty-empty">—</span>
                       )}
@@ -1240,13 +1241,13 @@ export default function Quotations() {
                   <table className="items-detail-table">
                     <thead>
                       <tr>
-                        <th>#</th>
-                        <th>Product</th>
-                        <th>Serial No.</th>
-                        <th>Warranty</th>
-                        <th style={{ textAlign: "center" }}>Qty</th>
-                        <th style={{ textAlign: "right" }}>Unit Price</th>
-                        <th style={{ textAlign: "right" }}>Subtotal</th>
+                        <th style={{ width: "6%" }}>#</th>
+                        <th style={{ width: "27%" }}>Product</th>
+                        <th style={{ width: "17%" }}>Serial No.</th>
+                        <th style={{ width: "100px" }}>Warranty</th>
+                        <th style={{ width: "8%", textAlign: "center" }}>Qty</th>
+                        <th style={{ width: "16%", textAlign: "right" }}>Unit Price</th>
+                        <th style={{ width: "16%", textAlign: "right" }}>Subtotal</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1255,10 +1256,10 @@ export default function Quotations() {
                           <td style={{ color: "#9ca3af" }}>{i + 1}</td>
                           <td><strong>{item.products?.name || "—"}</strong></td>
                           <td style={{ color: "#6b7280", fontSize: 12 }}>{item.serial_number || "—"}</td>
-                          <td>
+                          <td className="warranty-cell">
                             {item.products?.warranty
                               ? <span className="warranty-ok" title={item.products.warranty}>🛡 {item.products.warranty}</span>
-                              : <span className="warranty-missing">⚠ None</span>
+                              : <span className="warranty-missing" title="None">⚠ None</span>
                             }
                           </td>
                           <td style={{ textAlign: "center" }}>{item.quantity}</td>
