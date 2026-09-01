@@ -13,6 +13,42 @@ export function ProductRecordTemplate({ quotation, lines }) {
       year: "numeric", month: "long", day: "numeric"
     }) : "\u2014"
 
+  const fmtCurrency = (n) =>
+    typeof n === "number" && !isNaN(n)
+      ? n.toLocaleString("en-PH", { style: "currency", currency: "PHP" })
+      : null
+
+  const fmt = (n) =>
+    n != null && n !== ""
+      ? `\u20B1${Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : "\u2014"
+
+  const computedTotal = (lines || []).reduce((sum, item) => {
+    const unitPrice = item.unit_price ?? item.price ?? item.products?.price ?? 0
+    const qty = item.quantity ?? 0
+    return sum + (Number(unitPrice) * Number(qty))
+  }, 0)
+
+  // Base amount: prefer stored total_amount, fall back to computed line total
+  const matTotal = quotation?.total_amount ?? (computedTotal > 0 ? computedTotal : 0)
+
+  const discount = Number(quotation?.discount) || 0
+  const dp1 = Number(quotation?.downpayment) || 0
+  const dp2 = Number(quotation?.downpayment_2) || 0
+  const dp3 = Number(quotation?.downpayment_3) || 0
+  const downpayment = dp1 + dp2 + dp3
+  const dpEntries = [
+    { n: 1, amt: dp1, date: quotation?.downpayment_date },
+    { n: 2, amt: dp2, date: quotation?.downpayment_2_date },
+    { n: 3, amt: dp3, date: quotation?.downpayment_3_date },
+  ].filter(d => d.amt > 0)
+
+  const grandTotal = matTotal - discount - downpayment
+  const hasAnyAmount = matTotal > 0 || discount > 0 || downpayment > 0
+  const hasAdjustments = discount > 0 || downpayment > 0
+
+  const totalAmountFormatted = fmtCurrency(matTotal > 0 ? matTotal : null)
+
   return (
     <>
       <style>{`
@@ -176,6 +212,71 @@ export function ProductRecordTemplate({ quotation, lines }) {
           font-size: 7.5pt; color: #000000; line-height: 1.5;
         }
 
+        /* ── TOTAL AMOUNT (simple, no discount/downpayment) ── */
+        .q-total-row {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 6pt;
+        }
+        .q-total-box {
+          display: flex;
+          align-items: center;
+          gap: 8pt;
+          border: 1px solid #000000;
+          padding: 4pt 10pt;
+          min-width: 180pt;
+        }
+        .q-total-label {
+          font-size: 8pt;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5pt;
+          color: #000000;
+        }
+        .q-total-optional {
+          font-size: 6.5pt;
+          font-weight: 400;
+          color: #777777;
+          text-transform: none;
+          letter-spacing: 0;
+        }
+        .q-total-fill {
+          flex: 1;
+          border-bottom: 1px solid #000000;
+          height: 12pt;
+        }
+        .q-total-value {
+          font-size: 10pt;
+          font-weight: 800;
+          color: #000000;
+        }
+
+        /* ── TOTALS BREAKDOWN (with discount/downpayment) ── */
+        .q-totals-wrap {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 5pt;
+          margin-bottom: 8pt;
+        }
+        .q-totals-table { border-collapse: collapse; width: 210pt; font-size: 8.5pt; }
+        .q-totals-table td { padding: 4pt 8pt; border-bottom: 1px solid #e0e0e0; }
+        .q-totals-table tr:last-child td { border-bottom: none; }
+        .q-total-key {
+          font-weight: 700; text-transform: uppercase; font-size: 7pt;
+          color: #555555; white-space: nowrap;
+        }
+        .q-total-val { text-align: right; font-weight: 700; color: #000000; font-family: monospace; }
+        .q-grand-row td {
+          background-color: #111827 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color: #ffffff !important;
+          font-size: 9.5pt !important;
+          font-weight: 800 !important;
+          padding: 5pt 8pt !important;
+          border-bottom: none !important;
+        }
+
         /* ── REMARKS ── */
 .q-remarks-box {
   background-color: #f8f8f8 !important;
@@ -228,7 +329,7 @@ export function ProductRecordTemplate({ quotation, lines }) {
 
           {/* ── TITLE ── */}
           <div className="q-title-row">
-            <span className="q-title">Product Record</span>
+            <span className="q-title">Delivery Receipt</span>
           </div>
           <div className="q-subtitle">
             Product Registration &amp; Serial Number Record
@@ -299,7 +400,7 @@ export function ProductRecordTemplate({ quotation, lines }) {
                 <th style={{ width: "22pt", textAlign: "center" }}>Qty</th>
                 <th style={{ width: "160pt" }}>Item Name</th>
                 <th style={{ width: "100pt" }}>Serial Number</th>
-                <th style={{ width: "90pt" }}>Warranty</th>
+                <th style={{ width: "90pt" }}>Product Warranty</th>
               </tr>
             </thead>
             <tbody>
@@ -344,6 +445,60 @@ export function ProductRecordTemplate({ quotation, lines }) {
               )}
             </tbody>
           </table>
+
+          {/* ── TOTALS ── */}
+          {hasAnyAmount && (
+            hasAdjustments ? (
+              /* Discount and/or downpayment present — show full breakdown ending in Balance Due */
+              <div className="q-totals-wrap">
+                <table className="q-totals-table">
+                  <tbody>
+                    {matTotal > 0 && (
+                      <tr>
+                        <td className="q-total-key">Total Amount</td>
+                        <td className="q-total-val">{fmt(matTotal)}</td>
+                      </tr>
+                    )}
+                    {discount > 0 && (
+                      <tr>
+                        <td className="q-total-key">Discount</td>
+                        <td className="q-total-val">&minus; {fmt(discount)}</td>
+                      </tr>
+                    )}
+                    {dpEntries.map(d => (
+                      <tr key={d.n}>
+                        <td className="q-total-key">
+                          Downpayment{dpEntries.length > 1 ? ` #${d.n}` : ""}
+                          {d.date && (
+                            <div style={{ fontWeight: 400, fontSize: "6.5pt", color: "#777777", textTransform: "none" }}>
+                              {fmtDate(d.date)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="q-total-val">&minus; {fmt(d.amt)}</td>
+                      </tr>
+                    ))}
+                    <tr className="q-grand-row">
+                      <td>BALANCE DUE</td>
+                      <td style={{ textAlign: "right" }}>{fmt(grandTotal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              /* No discount/downpayment — keep the simple single Total Amount box */
+              totalAmountFormatted && (
+                <div className="q-total-row">
+                  <div className="q-total-box">
+                    <span className="q-total-label">
+                      Total Amount <span className="q-total-optional"></span>
+                    </span>
+                    <span className="q-total-value">{totalAmountFormatted}</span>
+                  </div>
+                </div>
+              )
+            )
+          )}
 
           {/* ── REMARKS ── */}
           {quotation?.remarks && (
