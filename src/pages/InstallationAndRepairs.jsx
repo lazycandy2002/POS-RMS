@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import React from "react"
 import { createRoot } from "react-dom/client"
+import html2canvas from "html2canvas"
 import DashboardLayout from "../Layout/DashboardLayout"
 import { supabase } from "../supabaseClient"
 import { InstallationAndRepairTemplate } from "../pages/InstallationAndRepairTemplate"
@@ -131,6 +132,10 @@ export default function InstallationAndRepairs() {
   const [quotationSource, setQuotationSource] = useState("")
   const [dpCount, setDpCount] = useState(1)
 
+  // Print / Picture choice popup
+  const [outputChoice, setOutputChoice] = useState(null) // { kind: "workorder" | "record", record, lines }
+  const [imageBusy, setImageBusy] = useState(false)
+
   const hasFetched = useRef(false)
   useEffect(() => {
     if (hasFetched.current) return
@@ -145,7 +150,9 @@ export default function InstallationAndRepairs() {
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key !== "Escape") return
-      if (showDeleteConfirm) {
+      if (outputChoice) {
+        if (!imageBusy) setOutputChoice(null)
+      } else if (showDeleteConfirm) {
         setShowDeleteConfirm(false)
         setDeleteTarget(null)
       } else if (showDetail) {
@@ -156,7 +163,7 @@ export default function InstallationAndRepairs() {
     }
     document.addEventListener("keydown", handleEsc)
     return () => document.removeEventListener("keydown", handleEsc)
-  }, [showModal, showDetail, showDeleteConfirm])
+  }, [showModal, showDetail, showDeleteConfirm, outputChoice, imageBusy])
 
   const fetchAll = async () => {
     setLoading(true)
@@ -243,24 +250,25 @@ export default function InstallationAndRepairs() {
     }, 100)
   }
 
+  // Shared by print + image for the Product Record
+  const toQuotationLike = (record) => ({
+    dr: record.ticket_number,
+    created_at: record.created_at,
+    status: record.status,
+    remarks: record.remarks,
+    client_id: record.client_id,
+    clients: record.client
+      ? { full_name: record.client.full_name }
+      : { full_name: record.client_name ?? "—" },
+    employees: record.preparer ? { full_name: record.preparer.full_name } : null,
+  })
+
   // ─── PRODUCT RECORD PRINT ─────────────────────────────────────────────────
   const handlePrintProductRecord = (record, lines) => {
     const printWindow = window.open("", "_blank", "width=900,height=700")
     if (!printWindow) { showToast("Pop-up blocked. Please allow pop-ups for this site.", "error"); return }
 
-    const quotationLike = {
-      dr: record.ticket_number,
-      created_at: record.created_at,
-      status: record.status,
-      remarks: record.remarks,
-      client_id: record.client_id,
-      clients: record.client
-        ? { full_name: record.client.full_name }
-        : { full_name: record.client_name ?? "—" },
-      employees: record.preparer
-        ? { full_name: record.preparer.full_name }
-        : null,
-    }
+    const quotationLike = toQuotationLike(record)
 
     printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8" /><title>Product Record — Ticket #${String(record.ticket_number ?? "").padStart(6, "0")}</title></head><body style="margin:0;padding:0;"><div id="print-root"></div></body></html>`)
     printWindow.document.close()
@@ -272,6 +280,67 @@ export default function InstallationAndRepairs() {
         setTimeout(() => { printWindow.focus(); printWindow.addEventListener("afterprint", () => printWindow.close()); printWindow.print() }, 900)
       } catch (err) { console.error("Product record print error:", err); showToast("Print failed: " + err.message, "error") }
     }, 100)
+  }
+
+  // ─── PRINT / PICTURE CHOICE ───────────────────────────────────────────────
+  const handleChoosePrint = () => {
+    if (!outputChoice) return
+    const { kind, record, lines } = outputChoice
+    setOutputChoice(null)
+    if (kind === "workorder") handlePrint(record, lines)
+    else handlePrintProductRecord(record, lines)
+  }
+
+  const handleChooseImage = async () => {
+    if (!outputChoice) return
+    const { kind, record, lines } = outputChoice
+    setImageBusy(true)
+
+    // Render the template off-screen in the main document
+    const host = document.createElement("div")
+    host.style.cssText = "position:fixed;left:-10000px;top:0;background:#fff;"
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    try {
+      const element = kind === "workorder"
+        ? React.createElement(InstallationAndRepairTemplate, { record, lines })
+        : React.createElement(ProductRecordTemplate, { quotation: toQuotationLike(record), lines })
+      root.render(element)
+
+      // wait for render + images/fonts to load
+      await new Promise(r => setTimeout(r, 900))
+
+      const canvas = await html2canvas(host, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      })
+
+      const ticket = String(record.ticket_number ?? "").padStart(6, "0")
+      const name = kind === "workorder" ? `WorkOrder-${ticket}.png` : `ProductRecord-${ticket}.png`
+
+      canvas.toBlob(blob => {
+        if (!blob) { showToast("Failed to create image.", "error"); return }
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = name
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+        showToast("Picture saved.")
+      }, "image/png")
+    } catch (err) {
+      console.error("Image export error:", err)
+      showToast("Image export failed: " + err.message, "error")
+    } finally {
+      root.unmount()
+      host.remove()
+      setImageBusy(false)
+      setOutputChoice(null)
+    }
   }
 
   // ─── QUOTATION CHANGE ─────────────────────────────────────────────────────
@@ -524,7 +593,6 @@ export default function InstallationAndRepairs() {
   const dp1Amt = Number(form.downpayment) || 0
   const dp2Amt = Number(form.downpayment_2) || 0
   const dp3Amt = Number(form.downpayment_3) || 0
-  const downpaymentTotal = dp1Amt + dp2Amt + dp3Amt
   const dpEntries = [
     { n: 1, amt: dp1Amt, date: form.downpayment_date },
     { n: 2, amt: dp2Amt, date: form.downpayment_2_date },
@@ -654,6 +722,7 @@ export default function InstallationAndRepairs() {
         .modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
         .btn-cancel{padding:9px 18px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
         .btn-cancel:hover{background:#e5e7eb}
+        .btn-cancel:disabled{opacity:0.5;cursor:not-allowed}
         .btn-save{padding:9px 24px;background:#b30000;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
         .btn-save:disabled{opacity:0.6;cursor:not-allowed}
         .btn-save:not(:disabled):hover{background:#e00000}
@@ -761,13 +830,13 @@ export default function InstallationAndRepairs() {
                     <td onClick={e => e.stopPropagation()}>
                       <div className="action-btns">
                         <button className="btn-view" title="View" onClick={() => openDetail(r)}>👁</button>
-                        <button className="btn-print" title="Print Work Order" onClick={async () => {
+                        <button className="btn-print" title="Work Order" onClick={async () => {
                           const items = await fetchIRItems(r.id)
-                          handlePrint(r, items)
+                          setOutputChoice({ kind: "workorder", record: r, lines: items })
                         }}>🖨️</button>
-                        <button className="btn-print-rec" title="Print Product Record" onClick={async () => {
+                        <button className="btn-print-rec" title="Product Record" onClick={async () => {
                           const items = await fetchIRItems(r.id)
-                          handlePrintProductRecord(r, items)
+                          setOutputChoice({ kind: "record", record: r, lines: items })
                         }}>📋</button>
                         <button className="btn-edit-sm" onClick={() => openEdit(r)}>✏️</button>
                         <button className="btn-del-sm" onClick={() => confirmDelete(r)}>🗑</button>
@@ -1244,12 +1313,12 @@ export default function InstallationAndRepairs() {
                 <button
                   className="btn-print"
                   style={{ padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
-                  onClick={() => handlePrint(selected, selectedLines)}
+                  onClick={() => setOutputChoice({ kind: "workorder", record: selected, lines: selectedLines })}
                 >🖨️ Work Order</button>
                 <button
                   className="btn-print-rec"
                   style={{ padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
-                  onClick={() => handlePrintProductRecord(selected, selectedLines)}
+                  onClick={() => setOutputChoice({ kind: "record", record: selected, lines: selectedLines })}
                 >📋 Product Record</button>
                 <button className="btn-edit-sm" style={{ padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }} onClick={() => openEdit(selected)}>✏️ Edit</button>
                 <button className="btn-confirm-del" onClick={() => confirmDelete(selected)}>🗑 Delete</button>
@@ -1275,6 +1344,38 @@ export default function InstallationAndRepairs() {
               <button className="btn-cancel" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
               <button className="btn-confirm-del" onClick={handleDelete}>Yes, Delete</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRINT / PICTURE CHOICE */}
+      {outputChoice && (
+        <div className="overlay" style={{ zIndex: 1100 }} onClick={() => !imageBusy && setOutputChoice(null)}>
+          <div className="confirm-modal" style={{ width: 380 }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 38, marginBottom: 10 }}>
+              {outputChoice.kind === "workorder" ? "🖨️" : "📋"}
+            </div>
+            <h3 style={{ margin: "0 0 6px", color: "#111827" }}>
+              {outputChoice.kind === "workorder" ? "Work Order" : "Product Record"}
+            </h3>
+            <p style={{ color: "#6b7280", fontSize: 13, margin: "0 0 20px" }}>
+              Ticket #{outputChoice.record.ticket_number} — how would you like to output it?
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 14 }}>
+              <button
+                className="btn-save"
+                style={{ flex: 1, background: "#111827" }}
+                disabled={imageBusy}
+                onClick={handleChoosePrint}
+              >🖨️ Print</button>
+              <button
+                className="btn-save"
+                style={{ flex: 1 }}
+                disabled={imageBusy}
+                onClick={handleChooseImage}
+              >{imageBusy ? "Saving..." : "🖼️ Picture"}</button>
+            </div>
+            <button className="btn-cancel" disabled={imageBusy} onClick={() => setOutputChoice(null)}>Cancel</button>
           </div>
         </div>
       )}

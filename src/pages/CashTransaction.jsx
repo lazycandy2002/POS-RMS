@@ -10,8 +10,6 @@ const today = () => {
   return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10)
 }
 
-const monthStart = () => `${today().slice(0, 7)}-01`
-
 const emptyForm = () => ({ date: today(), details: "", cashin: "", cashout: "", remarks: "" })
 
 // Avoid floating-point drift (e.g. 0.1 + 0.2) now that amounts have centavos.
@@ -25,8 +23,8 @@ const money = (value) =>
 
 export default function CashTransaction() {
   const [transactions, setTransactions] = useState([])
-  const [fromDate, setFromDate] = useState(monthStart)
-  const [toDate, setToDate] = useState(today)
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
@@ -171,8 +169,8 @@ export default function CashTransaction() {
   }
 
   const resetFilters = () => {
-    setFromDate(monthStart())
-    setToDate(today())
+    setFromDate("")
+    setToDate("")
     setSearch("")
   }
 
