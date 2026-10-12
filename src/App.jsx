@@ -9,6 +9,7 @@ import Clients from './pages/Clients'
 import InstallationAndRepairs from './pages/InstallationAndRepairs'
 import Settings from './pages/Settings'
 import Employees from './pages/Employees'
+import CashTransactions from './pages/CashTransaction'
 import ProtectedRoute from './ProtectedRoute'
 
 export default function App() {
@@ -44,7 +45,9 @@ export default function App() {
       <Route path="/employees" element={
         <ProtectedRoute><Employees /></ProtectedRoute>
       } />
-
+      <Route path="/cash-transactions" element={
+        <ProtectedRoute><CashTransactions /></ProtectedRoute>
+      } />
       {/* catch-all: unknown paths go to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

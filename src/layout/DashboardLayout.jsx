@@ -45,8 +45,8 @@ export default function DashboardLayout({ children }) {
     const timeGreets = h < 12
       ? ["Good morning", "Rise and shine", "Morning"]
       : h < 17
-      ? ["Good afternoon", "Hope your day's going well", "Afternoon"]
-      : ["Good evening", "Hope you had a great day", "Evening"]
+        ? ["Good afternoon", "Hope your day's going well", "Afternoon"]
+        : ["Good evening", "Hope you had a great day", "Evening"]
     const generalGreets = ["Welcome back", "Hey there", "Glad you're here", "Nice to see you"]
     const pool = [...timeGreets, ...generalGreets]
     setGreeting(pool[Math.floor(Math.random() * pool.length)])
@@ -82,6 +82,7 @@ export default function DashboardLayout({ children }) {
 
   const menu = [
     { name: "Dashboard", icon: "📊", path: "/dashboard" },
+    { name: "Cash Transactions", icon: "💵", path: "/cash-transactions" },
     { name: "Quotations", icon: "🧾", path: "/quotations" },
     { name: "Installation & Repairs", icon: "🛠️", path: "/installation-repairs" },
     { name: "Products", icon: "📦", path: "/products" },
@@ -118,6 +119,7 @@ export default function DashboardLayout({ children }) {
           height: 100vh;
           box-sizing: border-box;
           overflow: hidden;
+          flex-shrink: 0;
         }
 
         .brand {
@@ -134,6 +136,7 @@ export default function DashboardLayout({ children }) {
           gap: 6px;
           overflow-y: auto;
           flex: 1;
+          min-height: 0;
           padding-right: 4px;
         }
 
@@ -169,6 +172,8 @@ export default function DashboardLayout({ children }) {
           display: flex;
           flex-direction: column;
           overflow: hidden;
+          min-height: 0;
+          min-width: 0;
         }
 
         .topbar {
@@ -186,6 +191,7 @@ export default function DashboardLayout({ children }) {
           padding: 20px;
           overflow-y: auto;
           flex: 1;
+          min-height: 0;
         }
 
         .title {
