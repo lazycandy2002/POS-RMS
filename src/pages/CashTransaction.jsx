@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import DashboardLayout from "../Layout/DashboardLayout"
 import { supabase } from "../supabaseClient"
 
-const PAGE_SIZE = 30
+const PAGE_SIZE_OPTIONS = [50, 100, 200, 300, 500]
 
 const today = () => {
   const date = new Date()
@@ -12,7 +12,10 @@ const today = () => {
 
 const monthStart = () => `${today().slice(0, 7)}-01`
 
-const emptyForm = () => ({ date: today(), details: "", cashin: "", cashout: "" })
+const emptyForm = () => ({ date: today(), details: "", cashin: "", cashout: "", remarks: "" })
+
+// Avoid floating-point drift (e.g. 0.1 + 0.2) now that amounts have centavos.
+const round2 = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100
 
 const money = (value) =>
   Number(value || 0).toLocaleString("en-PH", {
@@ -26,6 +29,8 @@ export default function CashTransaction() {
   const [toDate, setToDate] = useState(today)
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const tableScrollRef = useRef(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -48,23 +53,28 @@ export default function CashTransaction() {
     setLoading(true)
     try {
       // Load the whole ledger so running balances stay correct across date ranges.
-      const { data, error } = await supabase
-        .from("cash_transaction")
-        .select("id, date, details, cashin, cashout, cashremaining, created_at")
-        .order("date", { ascending: true })
-        .order("id", { ascending: true })
+      // Supabase returns at most 1000 rows per request, so fetch in batches.
+      const BATCH = 1000
+      let rows = []
+      for (let from = 0; ; from += BATCH) {
+        const { data, error } = await supabase
+          .from("cash_transaction")
+          .select("id, date, details, cashin, cashout, cashremaining, remarks, created_at")
+          .order("date", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + BATCH - 1)
 
-      if (error) throw error
+        if (error) throw error
+        rows = rows.concat(data || [])
+        if (!data || data.length < BATCH) break
+      }
 
       let balance = 0
-      const ledger = (data || []).map((item) => {
-        balance += Number(item.cashin || 0) - Number(item.cashout || 0)
-        return {
-          ...item,
-          cashin: Number(item.cashin || 0),
-          cashout: Number(item.cashout || 0),
-          cashremaining: balance,
-        }
+      const ledger = rows.map((item) => {
+        const cashin = round2(item.cashin || 0)
+        const cashout = round2(item.cashout || 0)
+        balance = round2(balance + cashin - cashout)
+        return { ...item, cashin, cashout, cashremaining: balance }
       })
       setTransactions(ledger)
     } catch (err) {
@@ -76,8 +86,11 @@ export default function CashTransaction() {
 
   useEffect(() => { loadTransactions() }, [loadTransactions])
 
-  // Reset page when filters change
-  useEffect(() => { setPage(1) }, [search, fromDate, toDate])
+  // Newest entries are at the end of the ledger, so jump to the last page
+  // when filters / page size change or rows are added or removed.
+  useEffect(() => {
+    setPage(Number.MAX_SAFE_INTEGER)
+  }, [search, fromDate, toDate, pageSize, transactions.length])
 
   // ─── ESC KEY ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -97,24 +110,34 @@ export default function CashTransaction() {
       .filter((item) => {
         const inRange =
           (!fromDate || item.date >= fromDate) && (!toDate || item.date <= toDate)
-        const matches = !s || (item.details || "").toLowerCase().includes(s)
+        const matches =
+          !s ||
+          (item.details || "").toLowerCase().includes(s) ||
+          (item.remarks || "").toLowerCase().includes(s)
         return inRange && matches
       })
   }, [transactions, fromDate, toDate, search])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const currentPage = Math.min(page, totalPages)
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  // Keep the table scrolled to the bottom (latest rows) after load / page change.
+  useEffect(() => {
+    if (loading) return
+    const el = tableScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [loading, currentPage, pageSize, paginated.length])
 
   const totals = useMemo(
     () =>
       filtered.reduce(
-        (sum, item) => ({ cashin: sum.cashin + item.cashin, cashout: sum.cashout + item.cashout }),
+        (sum, item) => ({ cashin: round2(sum.cashin + item.cashin), cashout: round2(sum.cashout + item.cashout) }),
         { cashin: 0, cashout: 0 }
       ),
     [filtered]
   )
-  const net = totals.cashin - totals.cashout
+  const net = round2(totals.cashin - totals.cashout)
 
   const getPageNumbers = () => {
     if (totalPages <= 7) return [...Array(totalPages)].map((_, i) => i + 1)
@@ -167,6 +190,7 @@ export default function CashTransaction() {
       details: item.details || "",
       cashin: item.cashin ? String(item.cashin) : "",
       cashout: item.cashout ? String(item.cashout) : "",
+      remarks: item.remarks || "",
     })
     setEditId(item.id)
     setErrors({})
@@ -198,8 +222,9 @@ export default function CashTransaction() {
       const payload = {
         date: form.date,
         details: form.details.trim(),
-        cashin: Number(form.cashin || 0),
-        cashout: Number(form.cashout || 0),
+        cashin: round2(form.cashin || 0),
+        cashout: round2(form.cashout || 0),
+        remarks: form.remarks.trim() || null,
       }
 
       const result = editId
@@ -232,8 +257,15 @@ export default function CashTransaction() {
   // ─── EXPORT ──────────────────────────────────────────────────────────────
   const exportCSV = () => {
     const rows = [
-      ["Date", "Cash Transaction", "Cash In", "Cash Out", "Cash in Total"],
-      ...filtered.map((item) => [item.date, item.details || "", item.cashin, item.cashout, item.cashremaining]),
+      ["Date", "Cash Transaction", "Cash In", "Cash Out", "Cash in Total", "Remarks"],
+      ...filtered.map((item) => [
+        item.date,
+        item.details || "",
+        item.cashin,
+        item.cashout,
+        item.cashremaining,
+        item.remarks || "",
+      ]),
     ]
     const csv = rows
       .map((row) => row.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","))
@@ -309,6 +341,7 @@ export default function CashTransaction() {
         .form-group{display:flex;flex-direction:column;gap:5px}
         .form-group label{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px}
         .form-input{padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:Segoe UI;background:#f9fafb;color:#111827;width:100%;box-sizing:border-box}
+        textarea.form-input{resize:vertical;min-height:56px}
         .form-input:focus{border-color:#b30000;box-shadow:0 0 0 2px rgba(179,0,0,0.15);background:white}
         .form-input:disabled{background:#f1f5f9;color:#9ca3af;cursor:not-allowed}
         .form-input.err{border-color:#ef4444}
@@ -399,7 +432,7 @@ export default function CashTransaction() {
 
       {/* TABLE */}
       <div className="table-wrap">
-        <div className="table-scroll">
+        <div className="table-scroll" ref={tableScrollRef}>
           <table>
             <thead>
               <tr>
@@ -409,6 +442,7 @@ export default function CashTransaction() {
                 <th className="num">Cash In</th>
                 <th className="num">Cash Out</th>
                 <th className="num">Cash in Total</th>
+                <th>Remarks</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -416,17 +450,17 @@ export default function CashTransaction() {
               {loading ? (
                 [...Array(4)].map((_, i) => (
                   <tr className="skeleton-row" key={i}>
-                    {[...Array(7)].map((_, j) => (
+                    {[...Array(8)].map((_, j) => (
                       <td key={j}><div className="skeleton" style={{ width: j === 0 ? 20 : "80%" }} /></td>
                     ))}
                   </tr>
                 ))
               ) : paginated.length === 0 ? (
-                <tr className="empty-row"><td colSpan={7}>No transactions found for the selected dates.</td></tr>
+                <tr className="empty-row"><td colSpan={8}>No transactions found for the selected dates.</td></tr>
               ) : (
                 paginated.map((item, i) => (
                   <tr key={item.id}>
-                    <td style={{ color: "#000000" }}>{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
+                    <td style={{ color: "#000000" }}>{(currentPage - 1) * pageSize + i + 1}</td>
                     <td style={{ color: "#070707", whiteSpace: "nowrap" }}>{item.date}</td>
                     <td style={{ maxWidth: 380, overflowWrap: "anywhere" }}>
                       <strong>{item.details || "—"}</strong>
@@ -434,6 +468,9 @@ export default function CashTransaction() {
                     <td className={`num ${item.cashin ? "in" : "zero"}`}>{item.cashin ? money(item.cashin) : "—"}</td>
                     <td className={`num ${item.cashout ? "out" : "zero"}`}>{item.cashout ? money(item.cashout) : "—"}</td>
                     <td className="num bal">{money(item.cashremaining)}</td>
+                    <td style={{ maxWidth: 260, overflowWrap: "anywhere", color: "#6b7280" }}>
+                      {item.remarks || "—"}
+                    </td>
                     <td>
                       <div className="action-btns">
                         <button className="btn-edit-sm" onClick={() => openEdit(item)} title="Edit">✏️</button>
@@ -452,11 +489,24 @@ export default function CashTransaction() {
       {!loading && filtered.length > 0 && (
         <div className="pagination-bar">
           <span className="pagination-info">
-            Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} transaction{filtered.length !== 1 ? "s" : ""}
+            Showing {Math.min((currentPage - 1) * pageSize + 1, filtered.length)}–{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} transaction{filtered.length !== 1 ? "s" : ""}
           </span>
+          <label className="pagination-info" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            Rows per page
+            <select
+              className="q-filter"
+              style={{ padding: "5px 8px" }}
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+            >
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
           {totalPages > 1 && (
             <div className="pagination-btns">
-              <button className="pg-btn" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>← Prev</button>
+              <button className="pg-btn" onClick={() => setPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>← Prev</button>
               {getPageNumbers().map((p, i) =>
                 p === "..." ? (
                   <span key={`ellipsis-${i}`} className="pg-ellipsis">…</span>
@@ -464,7 +514,7 @@ export default function CashTransaction() {
                   <button key={p} className={`pg-btn${currentPage === p ? " active" : ""}`} onClick={() => setPage(p)}>{p}</button>
                 )
               )}
-              <button className="pg-btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next →</button>
+              <button className="pg-btn" onClick={() => setPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>Next →</button>
             </div>
           )}
         </div>
@@ -528,6 +578,18 @@ export default function CashTransaction() {
                   value={form.cashout}
                   disabled={Number(form.cashin) > 0}
                   onChange={(e) => setForm((f) => ({ ...f, cashout: e.target.value }))}
+                />
+              </div>
+
+              <div className="form-group form-full">
+                <label>Remarks</label>
+                <textarea
+                  className="form-input"
+                  rows={2}
+                  maxLength={500}
+                  placeholder="Optional notes"
+                  value={form.remarks}
+                  onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
                 />
               </div>
 
