@@ -10,7 +10,7 @@ const today = () => {
   return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10)
 }
 
-const emptyForm = () => ({ date: today(), details: "", cashin: "", cashout: "", remarks: "" })
+const emptyForm = () => ({ date: today(), details: "", cashin: "", cashout: "", personal_exp: "", remarks: "" })
 
 // Avoid floating-point drift (e.g. 0.1 + 0.2) now that amounts have centavos.
 const round2 = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100
@@ -57,7 +57,7 @@ export default function CashTransaction() {
       for (let from = 0; ; from += BATCH) {
         const { data, error } = await supabase
           .from("cash_transaction")
-          .select("id, date, details, cashin, cashout, cashremaining, remarks, created_at")
+          .select("id, date, details, cashin, cashout, personal_exp, cashremaining, remarks, created_at")
           .order("date", { ascending: true })
           .order("id", { ascending: true })
           .range(from, from + BATCH - 1)
@@ -71,8 +71,9 @@ export default function CashTransaction() {
       const ledger = rows.map((item) => {
         const cashin = round2(item.cashin || 0)
         const cashout = round2(item.cashout || 0)
-        balance = round2(balance + cashin - cashout)
-        return { ...item, cashin, cashout, cashremaining: balance }
+        const personal_exp = round2(item.personal_exp || 0)
+        balance = round2(balance + cashin - cashout - personal_exp)
+        return { ...item, cashin, cashout, personal_exp, cashremaining: balance }
       })
       setTransactions(ledger)
     } catch (err) {
@@ -130,12 +131,16 @@ export default function CashTransaction() {
   const totals = useMemo(
     () =>
       filtered.reduce(
-        (sum, item) => ({ cashin: round2(sum.cashin + item.cashin), cashout: round2(sum.cashout + item.cashout) }),
-        { cashin: 0, cashout: 0 }
+        (sum, item) => ({
+          cashin: round2(sum.cashin + item.cashin),
+          cashout: round2(sum.cashout + item.cashout),
+          personal: round2(sum.personal + item.personal_exp),
+        }),
+        { cashin: 0, cashout: 0, personal: 0 }
       ),
     [filtered]
   )
-  const net = round2(totals.cashin - totals.cashout)
+  const net = round2(totals.cashin - totals.cashout - totals.personal)
 
   const getPageNumbers = () => {
     if (totalPages <= 7) return [...Array(totalPages)].map((_, i) => i + 1)
@@ -188,6 +193,7 @@ export default function CashTransaction() {
       details: item.details || "",
       cashin: item.cashin ? String(item.cashin) : "",
       cashout: item.cashout ? String(item.cashout) : "",
+      personal_exp: item.personal_exp ? String(item.personal_exp) : "",
       remarks: item.remarks || "",
     })
     setEditId(item.id)
@@ -199,14 +205,16 @@ export default function CashTransaction() {
     const e = {}
     const cashin = Number(form.cashin || 0)
     const cashout = Number(form.cashout || 0)
+    const personal = Number(form.personal_exp || 0)
+    const amts = [cashin, cashout, personal]
     if (!form.date) e.date = "Date is required"
     if (!form.details.trim()) e.details = "Description is required"
-    if (!Number.isFinite(cashin) || !Number.isFinite(cashout) || cashin < 0 || cashout < 0) {
+    if (amts.some((n) => !Number.isFinite(n) || n < 0)) {
       e.amount = "Amounts must be valid, non-negative numbers"
-    } else if (cashin > 0 && cashout > 0) {
-      e.amount = "Enter either Cash In or Cash Out, not both"
-    } else if (cashin === 0 && cashout === 0) {
-      e.amount = "Enter an amount for Cash In or Cash Out"
+    } else if (amts.filter((n) => n > 0).length > 1) {
+      e.amount = "Enter only one: Cash In, Cash Out, or Personal Expense"
+    } else if (amts.every((n) => n === 0)) {
+      e.amount = "Enter an amount for Cash In, Cash Out, or Personal Expense"
     }
     return e
   }
@@ -222,6 +230,7 @@ export default function CashTransaction() {
         details: form.details.trim(),
         cashin: round2(form.cashin || 0),
         cashout: round2(form.cashout || 0),
+        personal_exp: round2(form.personal_exp || 0),
         remarks: form.remarks.trim() || null,
       }
 
@@ -255,12 +264,13 @@ export default function CashTransaction() {
   // ─── EXPORT ──────────────────────────────────────────────────────────────
   const exportCSV = () => {
     const rows = [
-      ["Date", "Cash Transaction", "Cash In", "Cash Out", "Cash in Total", "Remarks"],
+      ["Date", "Cash Transaction", "Cash In", "Cash Out", "Personal Expense", "Cash in Total", "Remarks"],
       ...filtered.map((item) => [
         item.date,
         item.details || "",
         item.cashin,
         item.cashout,
+        item.personal_exp,
         item.cashremaining,
         item.remarks || "",
       ]),
@@ -415,6 +425,7 @@ export default function CashTransaction() {
         {[
           { icon: "📥", label: "Total Cash In", value: `₱${money(totals.cashin)}`, color: "#15803d" },
           { icon: "📤", label: "Total Cash Out", value: `₱${money(totals.cashout)}`, color: "#b91c1c" },
+          { icon: "🧍", label: "Personal Expenses", value: `₱${money(totals.personal)}`, color: "#b45309" },
           { icon: "💰", label: "Net Movement", value: `₱${money(net)}`, color: net >= 0 ? "#15803d" : "#b91c1c" },
           { icon: "🧾", label: "Transactions", value: filtered.length, color: "#111827" },
         ].map((s) => (
@@ -439,6 +450,7 @@ export default function CashTransaction() {
                 <th>Cash Transaction</th>
                 <th className="num">Cash In</th>
                 <th className="num">Cash Out</th>
+                <th className="num">Personal Exp</th>
                 <th className="num">Cash in Total</th>
                 <th>Remarks</th>
                 <th>Actions</th>
@@ -448,13 +460,13 @@ export default function CashTransaction() {
               {loading ? (
                 [...Array(4)].map((_, i) => (
                   <tr className="skeleton-row" key={i}>
-                    {[...Array(8)].map((_, j) => (
+                    {[...Array(9)].map((_, j) => (
                       <td key={j}><div className="skeleton" style={{ width: j === 0 ? 20 : "80%" }} /></td>
                     ))}
                   </tr>
                 ))
               ) : paginated.length === 0 ? (
-                <tr className="empty-row"><td colSpan={8}>No transactions found for the selected dates.</td></tr>
+                <tr className="empty-row"><td colSpan={9}>No transactions found for the selected dates.</td></tr>
               ) : (
                 paginated.map((item, i) => (
                   <tr key={item.id}>
@@ -465,6 +477,7 @@ export default function CashTransaction() {
                     </td>
                     <td className={`num ${item.cashin ? "in" : "zero"}`}>{item.cashin ? money(item.cashin) : "—"}</td>
                     <td className={`num ${item.cashout ? "out" : "zero"}`}>{item.cashout ? money(item.cashout) : "—"}</td>
+                    <td className={`num ${item.personal_exp ? "out" : "zero"}`}>{item.personal_exp ? money(item.personal_exp) : "—"}</td>
                     <td className="num bal">{money(item.cashremaining)}</td>
                     <td style={{ maxWidth: 260, overflowWrap: "anywhere", color: "#6b7280" }}>
                       {item.remarks || "—"}
@@ -523,7 +536,7 @@ export default function CashTransaction() {
         <div className="overlay">
           <div className="modal">
             <h3>{editId ? "✏️ Edit Transaction" : "➕ New Transaction"}</h3>
-            <div className="modal-sub">Record a cash-in or cash-out entry</div>
+            <div className="modal-sub">Record a cash-in, cash-out, or personal expense entry</div>
 
             <div className="form-grid">
               <div className="form-group form-full">
@@ -560,7 +573,7 @@ export default function CashTransaction() {
                   className={`form-input${errors.amount ? " err" : ""}`}
                   placeholder="0.00"
                   value={form.cashin}
-                  disabled={Number(form.cashout) > 0}
+                  disabled={Number(form.cashout) > 0 || Number(form.personal_exp) > 0}
                   onChange={(e) => setForm((f) => ({ ...f, cashin: e.target.value }))}
                 />
               </div>
@@ -574,8 +587,22 @@ export default function CashTransaction() {
                   className={`form-input${errors.amount ? " err" : ""}`}
                   placeholder="0.00"
                   value={form.cashout}
-                  disabled={Number(form.cashin) > 0}
+                  disabled={Number(form.cashin) > 0 || Number(form.personal_exp) > 0}
                   onChange={(e) => setForm((f) => ({ ...f, cashout: e.target.value }))}
+                />
+              </div>
+
+              <div className="form-group form-full">
+                <label>Personal Expense (₱)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className={`form-input${errors.amount ? " err" : ""}`}
+                  placeholder="0.00"
+                  value={form.personal_exp}
+                  disabled={Number(form.cashin) > 0 || Number(form.cashout) > 0}
+                  onChange={(e) => setForm((f) => ({ ...f, personal_exp: e.target.value }))}
                 />
               </div>
 
