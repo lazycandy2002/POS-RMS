@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import DashboardLayout from "../Layout/DashboardLayout"
+import DashboardLayout from "../layout/DashboardLayout.jsx"
 import { supabase } from "../supabaseClient"
 
 const PAGE_SIZE_OPTIONS = [50, 100, 200, 300, 500]

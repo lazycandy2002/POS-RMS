@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import DashboardLayout from "../Layout/DashboardLayout"
+import DashboardLayout from "../layout/DashboardLayout.jsx"
 import { supabase } from "../supabaseClient"
 
 const emptyForm = { full_name: "", phone: "", address: "", username: "", password: "" }
