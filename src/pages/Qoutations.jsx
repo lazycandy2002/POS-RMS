@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import DashboardLayout from "../Layout/DashboardLayout"
+import DashboardLayout from "../layout/DashboardLayout.jsx"
 import { supabase } from "../supabaseClient"
 import { QuotationPrintTemplate } from "./QoutationPrintTemplate"
 import { ProductRecordTemplate } from "./ProductRecordTemplate"

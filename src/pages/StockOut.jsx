@@ -1,4 +1,4 @@
-import DashboardLayout from "../Layout/DashboardLayout"
+import DashboardLayout from "../layout/DashboardLayout.jsx" 
 
 export default function StockOut() {  // ← was "Dashboard"
   return (
