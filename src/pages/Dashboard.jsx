@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import DashboardLayout from "../Layout/DashboardLayout"
+import DashboardLayout from "../layout/DashboardLayout.jsx"
 import { supabase } from "../supabaseClient"
 
 const PH_HOLIDAYS = [
