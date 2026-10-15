@@ -270,7 +270,7 @@ export default function InstallationAndRepairs() {
 
     const quotationLike = toQuotationLike(record)
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8" /><title>Product Record — Ticket #${String(record.ticket_number ?? "").padStart(6, "0")}</title></head><body style="margin:0;padding:0;"><div id="print-root"></div></body></html>`)
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8" /><title>Delivery Receipt — Ticket #${String(record.ticket_number ?? "").padStart(6, "0")}</title></head><body style="margin:0;padding:0;"><div id="print-root"></div></body></html>`)
     printWindow.document.close()
     setTimeout(() => {
       try {
@@ -278,7 +278,7 @@ export default function InstallationAndRepairs() {
         const root = createRoot(container)
         root.render(React.createElement(ProductRecordTemplate, { quotation: quotationLike, lines }))
         setTimeout(() => { printWindow.focus(); printWindow.addEventListener("afterprint", () => printWindow.close()); printWindow.print() }, 900)
-      } catch (err) { console.error("Product record print error:", err); showToast("Print failed: " + err.message, "error") }
+      } catch (err) { console.error("Delivery receipt print error:", err); showToast("Print failed: " + err.message, "error") }
     }, 100)
   }
 
@@ -720,7 +720,7 @@ export default function InstallationAndRepairs() {
         .summary-row.downpayment{background:#eff6ff;color:#1d4ed8;font-weight:600}
         .summary-row.subtotal{background:#f9fafb;color:#374151}
         .modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
-        .btn-cancel{padding:9px 18px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+        .btn-cancel{padding:9px 18px;background:#f3f4f6;color:#374151;border:1px solid #ccc;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
         .btn-cancel:hover{background:#e5e7eb}
         .btn-cancel:disabled{opacity:0.5;cursor:not-allowed}
         .btn-save{padding:9px 24px;background:#b30000;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
@@ -834,10 +834,10 @@ export default function InstallationAndRepairs() {
                           const items = await fetchIRItems(r.id)
                           setOutputChoice({ kind: "workorder", record: r, lines: items })
                         }}>🖨️</button>
-                        <button className="btn-print-rec" title="Product Record" onClick={async () => {
+                        <button className="btn-print-rec" title="Delivery Receipt" onClick={async () => {
                           const items = await fetchIRItems(r.id)
                           setOutputChoice({ kind: "record", record: r, lines: items })
-                        }}>📋</button>
+                        }}>⛟</button>
                         <button className="btn-edit-sm" onClick={() => openEdit(r)}>✏️</button>
                         <button className="btn-del-sm" onClick={() => confirmDelete(r)}>🗑</button>
                       </div>
@@ -1319,7 +1319,7 @@ export default function InstallationAndRepairs() {
                   className="btn-print-rec"
                   style={{ padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }}
                   onClick={() => setOutputChoice({ kind: "record", record: selected, lines: selectedLines })}
-                >📋 Product Record</button>
+                >⛟ Delivery Receipt</button>
                 <button className="btn-edit-sm" style={{ padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }} onClick={() => openEdit(selected)}>✏️ Edit</button>
                 <button className="btn-confirm-del" onClick={() => confirmDelete(selected)}>🗑 Delete</button>
               </div>
@@ -1353,10 +1353,10 @@ export default function InstallationAndRepairs() {
         <div className="overlay" style={{ zIndex: 1100 }} onClick={() => !imageBusy && setOutputChoice(null)}>
           <div className="confirm-modal" style={{ width: 380 }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 38, marginBottom: 10 }}>
-              {outputChoice.kind === "workorder" ? "🖨️" : "📋"}
+              {outputChoice.kind === "workorder" ? "🖨️" : "⛟"}
             </div>
             <h3 style={{ margin: "0 0 6px", color: "#111827" }}>
-              {outputChoice.kind === "workorder" ? "Work Order" : "Product Record"}
+              {outputChoice.kind === "workorder" ? "Work Order" : "Delivery Receipt"}
             </h3>
             <p style={{ color: "#6b7280", fontSize: 13, margin: "0 0 20px" }}>
               Ticket #{outputChoice.record.ticket_number} — how would you like to output it?
