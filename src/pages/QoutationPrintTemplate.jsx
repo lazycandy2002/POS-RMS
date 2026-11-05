@@ -1,5 +1,10 @@
 // ─── QUOTATION PRINT TEMPLATE ─────────────────────────────────────────────────
 // A4 format: 210mm × 297mm (794px × 1123px at 96dpi screen / true A4 on print)
+//
+// Status → Document title
+//   Approved  → BILLING
+//   Delivered → ACKNOWLEDGEMENT RECEIPT
+//   Others    → QUOTATION
 
 export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
   const fmt = (n) =>
@@ -7,7 +12,19 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
       ? `\u20b1${Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : "\u2014"
 
-  const isBilling = quotation?.status === "Delivered" || quotation?.status === "Approved"
+  // ── Document type based on status ──
+  const status = quotation?.status
+  const isBilling = status === "Approved"
+  const isReceipt = status === "Delivered"
+  const isQuotation = !isBilling && !isReceipt
+
+  const docTitle = isBilling
+    ? "Billing"
+    : isReceipt
+      ? "Acknowledgement Receipt"
+      : "Quotation"
+
+  const docNoLabel = isBilling ? "Billing No." : isReceipt ? "AR No." : "Quote No."
 
   const materialsTotal = lines.reduce((sum, it) => sum + (Number(it.price) * Number(it.quantity) || 0), 0)
   const electricalMaterials = Number(quotation?.electrical_materials) || 0
@@ -121,6 +138,9 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
           font-size: 17pt; font-weight: 900; color: #000000;
           text-decoration: underline; text-transform: uppercase; letter-spacing: 4pt;
         }
+        .q-title.long {
+          font-size: 15pt; letter-spacing: 3pt;
+        }
 
         .rms-meta-row {
           display: flex;
@@ -218,13 +238,13 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
         .item-code { font-weight: 600; font-size: 7.5pt; color: #000000; vertical-align: middle !important; }
         .item-name { font-weight: 600; color: #000000; font-size: 8.5pt; line-height: 1.3; }
         .item-desc {
-  font-size: 7pt;
-  font-weight: 400;
-  color: #555555;
-  margin-top: 1.5pt;
-  line-height: 1.4;
-  white-space: pre-line;
-}
+          font-size: 7pt;
+          font-weight: 400;
+          color: #555555;
+          margin-top: 1.5pt;
+          line-height: 1.4;
+          white-space: pre-line;
+        }
 
         .q-totals-wrap {
           display: flex; justify-content: flex-end;
@@ -276,7 +296,7 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
 
           {/* ── TITLE ── */}
           <div className="q-title-row">
-            <span className="q-title">{isBilling ? "Billing" : "Quotation"}</span>
+            <span className={`q-title${isReceipt ? " long" : ""}`}>{docTitle}</span>
           </div>
 
           {/* ── META ROW ── */}
@@ -311,7 +331,7 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
                       <td className="meta-val">{dateFormatted}</td>
                     </tr>
                     <tr>
-                      <td className="meta-key">Quote No.</td>
+                      <td className="meta-key">{docNoLabel}</td>
                       <td className="meta-val" style={{ fontFamily: "monospace", fontSize: "9pt", fontWeight: "800" }}>
                         {quotation?.dr ? `DR-${String(quotation.dr).padStart(6, "0")}` : "\u2014"}
                       </td>
@@ -320,10 +340,12 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
                       <td className="meta-key">Customer ID</td>
                       <td className="meta-val">{quotation?.client_id ?? "\u2014"}</td>
                     </tr>
-                    <tr>
-                      <td className="meta-key">Valid Until</td>
-                      <td className="meta-val">{validUntil}</td>
-                    </tr>
+                    {isQuotation && (
+                      <tr>
+                        <td className="meta-key">Valid Until</td>
+                        <td className="meta-val">{validUntil}</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -464,7 +486,11 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
 
           {/* ── VALIDITY / TERMS ── */}
           <div className="q-validity-section">
-            <strong>Validity of Offer:</strong> Within seven (7) days from the date hereon.<br />
+            {isQuotation && (
+              <>
+                <strong>Validity of Offer:</strong> Within seven (7) days from the date hereon.<br />
+              </>
+            )}
             <strong>Terms of Payment:</strong> 50% downpayment upon issuance of Purchase Order; 50% upon complete delivery and acceptance.
           </div>
 
@@ -476,7 +502,11 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
             </div>
             <div style={{ textAlign: "left" }}>
               <div style={{ fontSize: "8.5pt", marginBottom: "2pt" }}>
-                {isBilling ? "Payment Received by:" : "Customer's Conforme:"}
+                {isReceipt
+                  ? "Payment Received by:"
+                  : isBilling
+                    ? "Received in good order and condition by:"
+                    : "Customer's Conforme:"}
               </div>
               <div className="q-sig-line" style={{ marginLeft: "auto" }}></div>
               {isBilling ? "Authorized Signature" : "Customer's Signature"}

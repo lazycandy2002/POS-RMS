@@ -10,6 +10,9 @@ import InstallationAndRepairs from './pages/InstallationAndRepairs'
 import Settings from './pages/Settings'
 import Employees from './pages/Employees'
 import CashTransactions from './pages/CashTransaction'
+import InternetBilling from './pages/InternetBilling'
+import PurchaseOrder from './pages/PurchaseOrder'
+import Suppliers from './pages/Suppliers'
 import ProtectedRoute from './ProtectedRoute'
 
 export default function App() {
@@ -36,6 +39,9 @@ export default function App() {
       <Route path="/quotations" element={
         <ProtectedRoute><Quotations /></ProtectedRoute>
       } />
+      <Route path="/suppliers" element={
+        <ProtectedRoute><Suppliers /></ProtectedRoute>
+      } />
       <Route path="/clients" element={
         <ProtectedRoute><Clients /></ProtectedRoute>
       } />
@@ -47,6 +53,12 @@ export default function App() {
       } />
       <Route path="/cash-transactions" element={
         <ProtectedRoute><CashTransactions /></ProtectedRoute>
+      } />
+      <Route path="/internet-billing" element={
+        <ProtectedRoute><InternetBilling /></ProtectedRoute>
+      } />
+      <Route path="/purchase-order" element={
+        <ProtectedRoute><PurchaseOrder /></ProtectedRoute>
       } />
       {/* catch-all: unknown paths go to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
