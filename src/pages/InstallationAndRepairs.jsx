@@ -257,12 +257,21 @@ export default function InstallationAndRepairs() {
     status: record.status,
     remarks: record.remarks,
     client_id: record.client_id,
+    start_date: record.start_date,
+    end_date: record.end_date,
     clients: record.client
       ? { full_name: record.client.full_name }
       : { full_name: record.client_name ?? "—" },
     employees: record.preparer ? { full_name: record.preparer.full_name } : null,
+    technician: record.technician ? { full_name: record.technician.full_name } : null,
+    discount: record.discount,
+    downpayment: record.downpayment,
+    downpayment_date: record.downpayment_date,
+    downpayment_2: record.downpayment_2,
+    downpayment_2_date: record.downpayment_2_date,
+    downpayment_3: record.downpayment_3,
+    downpayment_3_date: record.downpayment_3_date,
   })
-
   // ─── PRODUCT RECORD PRINT ─────────────────────────────────────────────────
   const handlePrintProductRecord = (record, lines) => {
     const printWindow = window.open("", "_blank", "width=900,height=700")

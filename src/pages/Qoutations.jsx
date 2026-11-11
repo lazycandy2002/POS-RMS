@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import DashboardLayout from "../layout/DashboardLayout.jsx"
 import { supabase } from "../supabaseClient"
 import { QuotationPrintTemplate } from "./QoutationPrintTemplate"
-import { ProductRecordTemplate } from "./ProductRecordTemplate"
+import { QoutationProductRecordTemplate } from "./QoutationProductRecordTemplate"
 
 const STATUSES = ["Pending", "Approved", "Rejected", "Delivered", "Cancelled"]
 const STATUS_ORDER = { Pending: 0, Approved: 1, Delivered: 2, Rejected: 3, Cancelled: 4 }
@@ -179,7 +179,7 @@ export default function Quotations() {
       .from("quotation_items")
       .select("*, products(*)")
       .eq("quotation_id", quotationId)
-      .order("id", { ascending: true }) 
+      .order("id", { ascending: true })
     console.log("quotation_items:", data, "error:", error)
     return data ?? []
   }
@@ -198,7 +198,7 @@ export default function Quotations() {
     const printWindow = window.open("", "_blank", "width=900,height=1100")
     const ReactDOMServer = await import("react-dom/server")
     const html = ReactDOMServer.renderToStaticMarkup(
-      <ProductRecordTemplate quotation={q} lines={items} />
+      <QoutationProductRecordTemplate quotation={q} lines={items} />
     )
     printWindow.document.write(`
     <!DOCTYPE html><html><head>
@@ -1335,7 +1335,7 @@ export default function Quotations() {
                 >
                   Save as PNG
                 </button>
-                <button className="btn-print" style={{ background: "#1d4ed8" }} onClick={() => printProductRecord(selected, selectedLines)}>📋 Product Record</button>
+                <button className="btn-print" style={{ background: "#1d4ed8" }} onClick={() => printProductRecord(selected, selectedLines)}>Delivery Reciept</button>
                 <button className="btn-edit-sm" style={{ padding: "9px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13 }} onClick={() => openEdit(selected)}>✏️ Edit</button>
                 <button className="btn-confirm-del" onClick={() => confirmDelete(selected)}>🗑 Delete</button>
               </div>
