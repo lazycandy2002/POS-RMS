@@ -526,35 +526,27 @@ export function QoutationProductRecordTemplate({ quotation, lines }) {
           <div className="q-validity-section" style={{ marginTop: "6pt" }}>
             <strong>Support:</strong> For technical assistance, contact RMS Information Technology Solutions at 0950 274 2565 or rmsitsolutions08@gmail.com.
           </div>
-          <div>
-            <div style={{ fontSize: "8.5pt", marginTop: "3pt", marginBottom: "2pt" }}>Very Truly Yours,</div>
-            <div style={{ fontWeight: "800", fontSize: "8.5pt", marginTop: "3pt", marginBottom: "2pt" }}>RMS Information Technology Solutions</div>
-          </div>
 
           {/* ── SIGNATORY ── */}
-          <div style={{ marginTop: "18pt", fontSize: "8.5pt" }}>
+          <div style={{ marginTop: "28pt", fontSize: "8.5pt" }}>
             <div style={{
               display: "flex",
               justifyContent: "space-between",
-              gap: "5pt"
+              gap: "40pt"
             }}>
 
-              {/* LEFT COLUMN — Prepared by + Approved by */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "5pt", flex: 1 }}>
-                <div>
-                  <div style={{ fontSize: "8.5pt", marginBottom: "1pt" }}>Prepared by:</div>
-                  <div className="q-sig-line"></div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "8.5pt", marginBottom: "2pt" }}>Approved by:</div>
-                  <div className="q-sig-line"></div>
-                </div>
+              {/* LEFT — Delivered by */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "8.5pt", marginBottom: "1pt" }}>Delivered by:</div>
+                <div className="q-sig-line" style={{ width: "100%" }}></div>
+                <div className="q-sig-sub">Printed Name &amp; Signature</div>
+                <div className="q-sig-sub" style={{ marginTop: "4pt" }}>Date Delivered:</div>
               </div>
 
-              {/* RIGHT COLUMN — Received by */}
+              {/* RIGHT — Received by */}
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: "8.5pt", marginBottom: "1pt" }}>Received by:</div>
-                <div className="q-sig-line"></div>
+                <div className="q-sig-line" style={{ width: "100%" }}></div>
                 <div className="q-sig-sub">Printed Name &amp; Signature</div>
                 <div className="q-sig-sub" style={{ marginTop: "4pt" }}>Date Received:</div>
               </div>

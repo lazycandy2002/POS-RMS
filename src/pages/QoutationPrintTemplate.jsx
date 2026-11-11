@@ -509,7 +509,9 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
                     : "Customer's Conforme:"}
               </div>
               <div className="q-sig-line" style={{ marginLeft: "auto" }}></div>
-              {isBilling ? "Authorized Signature" : "Customer's Signature"}
+              <div className="q-sig-sub">
+                {isBilling || isReceipt ? "Authorized Signature" : "Customer's Signature"}
+              </div>
               <div className="q-sig-sub" style={{ marginTop: "5pt" }}>Date Signed:</div>
             </div>
           </div>
