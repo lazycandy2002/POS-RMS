@@ -33,7 +33,7 @@ export function InstallationAndRepairTemplate({ record, lines }) {
   ].filter(d => d.amt > 0)
 
   const typeBadge = {
-    "Installation": { bg: "#111827", color: "#ffffff" },
+    "Installation": { bg: "#e5e7eb", color: "#111827" },
     "Repair": { bg: "#fef2f2", color: "#b91c1c" },
     "Maintenance": { bg: "#f0fdf4", color: "#15803d" },
     "Inspection": { bg: "#f5f3ff", color: "#6d28d9" },
@@ -136,7 +136,7 @@ export function InstallationAndRepairTemplate({ record, lines }) {
           margin-bottom: 8pt;
         }
 
-        /* ── TYPE BADGE ROW (ticket# removed, only type badge remains) ── */
+        /* ── TYPE BADGE ROW ── */
         .ir-ticket-row {
           display: flex;
           align-items: center;
@@ -197,13 +197,27 @@ export function InstallationAndRepairTemplate({ record, lines }) {
 
         /* ── MATERIALS TABLE ── */
         .ir-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+
+        /* Light header (forced, so global dark thead styles can't override) */
+        .ir-table thead,
+        .ir-table thead tr,
+        .ir-table thead th {
+          background: #f3f4f6 !important;
+          background-color: #f3f4f6 !important;
+          color: #000000 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
         .ir-table thead tr {
           border-top: 1.5px solid #000000;
           border-bottom: 1.5px solid #000000;
         }
         .ir-table thead th {
-          padding: 5pt 6pt; text-align: left; font-weight: 700;
-          font-size: 7.5pt; color: #000000; text-decoration: underline;
+          padding: 5pt 6pt;
+          text-align: left;
+          font-weight: 700;
+          font-size: 7.5pt;
+          text-decoration: underline;
           border-right: 1px solid #cccccc;
         }
         .ir-table thead th:last-child { border-right: none; }
@@ -246,32 +260,35 @@ export function InstallationAndRepairTemplate({ record, lines }) {
           color: #555555; white-space: nowrap;
         }
         .ir-total-val { text-align: right; font-weight: 700; color: #000000; font-family: monospace; }
+
+        /* Light BALANCE DUE row */
         .ir-grand-row td {
-          background-color: #111827 !important;
+          background-color: #f3f4f6 !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
-          color: #ffffff !important;
+          color: #000000 !important;
           font-size: 9.5pt !important;
           font-weight: 800 !important;
           padding: 5pt 8pt !important;
+          border-top: 1.5px solid #000000;
           border-bottom: none !important;
         }
 
         /* ── REMARKS ── */
-.ir-remarks-box {
-  background-color: #f8f8f8 !important;
-  -webkit-print-color-adjust: exact !important;
-  print-color-adjust: exact !important;
-  border: 1px solid #e0e0e0;
-  border-radius: 4pt;
-  padding: 6pt 10pt;
-  font-size: 8pt;
-  color: #333333;
-  line-height: 1.6;
-  margin-top: 3pt;
-  margin-bottom: 8pt;
-  white-space: pre-line;
-}
+        .ir-remarks-box {
+          background-color: #f8f8f8 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          border: 1px solid #e0e0e0;
+          border-radius: 4pt;
+          padding: 6pt 10pt;
+          font-size: 8pt;
+          color: #333333;
+          line-height: 1.6;
+          margin-top: 3pt;
+          margin-bottom: 8pt;
+          white-space: pre-line;
+        }
         .ir-section-label { font-weight: 700; font-size: 8.5pt; color: #000000; margin-bottom: 2pt; }
         .ir-notes-section { margin-bottom: 6pt; font-size: 8.5pt; }
         .ir-validity-section { font-size: 8.5pt; line-height: 1.8; color: #000000; margin-bottom: 1pt; }
@@ -294,7 +311,7 @@ export function InstallationAndRepairTemplate({ record, lines }) {
                 onError={e => { e.target.style.display = "none" }}
               />
               <div>
-                <div className="q-company-name">RMS Information Technology Solutions</div>
+                <div className="ir-company-name">RMS Information Technology Solutions</div>
                 <div className="ir-company-address">
                   Aurora Bataan Highway, Digos City, Davao del Sur, Philippines 8002
                 </div>
@@ -314,7 +331,7 @@ export function InstallationAndRepairTemplate({ record, lines }) {
             Installation &amp; Repair — Field Service Ticket
           </div>
 
-          {/* ── TYPE BADGE ROW (ticket# moved to right table) ── */}
+          {/* ── TYPE BADGE ROW ── */}
           <div className="ir-ticket-row">
             <span
               className="ir-type-badge"
