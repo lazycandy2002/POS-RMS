@@ -347,12 +347,6 @@ export function QoutationProductRecordTemplate({ quotation, lines }) {
                   {quotation?.employees?.full_name ?? "\u2014"}
                 </div>
               </div>
-              <div>
-                <div className="left-field-label">Assigned Technician</div>
-                <div className="left-field-value">
-                  {quotation?.technician?.full_name ?? "\u2014"}
-                </div>
-              </div>
             </div>
 
             <div className="rms-meta-box-wrap">
