@@ -15,7 +15,7 @@ export function QuotationPrintTemplate({ quotation, lines, logoSrc = "" }) {
   // ── Document type based on status ──
   const status = quotation?.status
   const isBilling = status === "Approved"
-  const isReceipt = status === "Delivered"
+  const isReceipt = status === "Paid" || status === "Delivered"
   const isQuotation = !isBilling && !isReceipt
 
   const docTitle = isBilling

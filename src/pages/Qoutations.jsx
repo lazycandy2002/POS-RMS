@@ -4,8 +4,8 @@ import { supabase } from "../supabaseClient"
 import { QuotationPrintTemplate } from "./QoutationPrintTemplate"
 import { QoutationProductRecordTemplate } from "./QoutationProductRecordTemplate"
 
-const STATUSES = ["Pending", "Approved", "Rejected", "Delivered", "Cancelled"]
-const STATUS_ORDER = { Pending: 0, Approved: 1, Delivered: 2, Rejected: 3, Cancelled: 4 }
+const STATUSES = ["Pending", "Approved", "Rejected", "Delivered", "Paid", "Cancelled"]
+const STATUS_ORDER = { Pending: 0, Approved: 1, Delivered: 2, Paid: 3, Rejected: 4, Cancelled: 5 }
 const PAGE_SIZE = 30
 
 const emptyForm = {
@@ -490,6 +490,7 @@ export default function Quotations() {
     Approved: { bg: "#dcfce7", color: "#15803d" },
     Rejected: { bg: "#fee2e2", color: "#b91c1c" },
     Delivered: { bg: "#dbeafe", color: "#1d4ed8" },
+    Paid: { bg: "#d1fae5", color: "#047857" },
     Cancelled: { bg: "#f3f4f6", color: "#6b7280" },
   }[s] || { bg: "#f3f4f6", color: "#374151" })
 
@@ -533,6 +534,7 @@ export default function Quotations() {
     pending: quotations.filter(q => q.status === "Pending").length,
     approved: quotations.filter(q => q.status === "Approved").length,
     delivered: quotations.filter(q => q.status === "Delivered").length,
+    paid: quotations.filter(q => q.status === "Paid").length,
   }
 
   // ─── COMPUTED TOTALS (modal) ──────────────────────────────────────────────
@@ -739,6 +741,7 @@ export default function Quotations() {
           { icon: "🧾", label: "Total", value: summaryStats.total, color: "#111827" },
           { icon: "⏳", label: "Pending", value: summaryStats.pending, color: "#854d0e" },
           { icon: "✅", label: "Approved", value: summaryStats.approved, color: "#15803d" },
+          { icon: "💰", label: "Paid", value: summaryStats.paid, color: "#047857" },
           { icon: "🚚", label: "Delivered", value: summaryStats.delivered, color: "#1d4ed8" },
         ].map(s => (
           <div className="stat-card" key={s.label}>
